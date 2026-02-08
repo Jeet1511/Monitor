@@ -158,7 +158,7 @@ const AdvancedAdminDashboard = () => {
                             <RefreshCw size={16} className={refreshing ? 'spinning' : ''} />
                             Refresh
                         </button>
-                        <button className="btn btn-primary">
+                        <button className="btn btn-primary" onClick={() => console.log('Export clicked')}>
                             <Download size={16} />
                             Export Report
                         </button>
@@ -381,7 +381,7 @@ const AdvancedAdminDashboard = () => {
                 <div className="recent-activity-card">
                     <div className="card-header">
                         <h3>Recent Activity</h3>
-                        <button className="btn btn-secondary">
+                        <button className="btn btn-secondary" onClick={() => console.log('View all clicked')}>
                             <Eye size={16} />
                             View All
                         </button>
