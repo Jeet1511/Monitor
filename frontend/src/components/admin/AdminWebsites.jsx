@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from './AdminLayout';
 import { adminAPI } from '../../utils/api';
+import AddWebsiteModal from './AddWebsiteModal';
 import {
     Globe,
     Trash2,
@@ -8,14 +9,17 @@ import {
     Clock,
     ChevronLeft,
     ChevronRight,
-    Filter
+    Filter,
+    Plus
 } from 'lucide-react';
 
 const AdminWebsites = () => {
     const [websites, setWebsites] = useState([]);
+    const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
     const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+    const [showAddModal, setShowAddModal] = useState(false);
 
     const fetchWebsites = async (page = 1, status = '') => {
         setLoading(true);
@@ -32,13 +36,33 @@ const AdminWebsites = () => {
         }
     };
 
+    const fetchUsers = async () => {
+        try {
+            const data = await adminAPI.getUsers();
+            setUsers(data.data.users || []);
+        } catch (error) {
+            console.error('Failed to fetch users:', error);
+        }
+    };
+
     useEffect(() => {
         fetchWebsites();
+        fetchUsers();
     }, []);
 
     const handleFilterChange = (status) => {
         setStatusFilter(status);
         fetchWebsites(1, status);
+    };
+
+    const handleAddWebsite = async (websiteData) => {
+        try {
+            await adminAPI.createWebsiteForUser(websiteData);
+            await fetchWebsites(pagination.page, statusFilter);
+            setShowAddModal(false);
+        } catch (error) {
+            throw new Error(error.message || 'Failed to create website');
+        }
     };
 
     const handleDelete = async (websiteId) => {
@@ -63,11 +87,21 @@ const AdminWebsites = () => {
 
     return (
         <AdminLayout>
-            <div style={{ marginBottom: 'var(--spacing-xl)' }}>
-                <h1 style={{ fontSize: '1.75rem', marginBottom: 'var(--spacing-xs)' }}>All Websites</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                    Monitor all websites across the platform ({pagination.total} total)
-                </p>
+            <div style={{ marginBottom: 'var(--spacing-xl)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.75rem', marginBottom: 'var(--spacing-xs)' }}>All Websites</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                        Monitor all websites across the platform ({pagination.total} total)
+                    </p>
+                </div>
+                <button
+                    className="btn btn-primary"
+                    onClick={() => setShowAddModal(true)}
+                    style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                    <Plus size={18} />
+                    Add Website
+                </button>
             </div>
 
             {/* Filter */}
@@ -186,6 +220,15 @@ const AdminWebsites = () => {
                         <ChevronRight size={18} />
                     </button>
                 </div>
+            )}
+
+            {/* Add Website Modal */}
+            {showAddModal && (
+                <AddWebsiteModal
+                    users={users}
+                    onClose={() => setShowAddModal(false)}
+                    onSubmit={handleAddWebsite}
+                />
             )}
         </AdminLayout>
     );

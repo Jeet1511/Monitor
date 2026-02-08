@@ -128,6 +128,36 @@ export const adminAPI = {
         fetchWithAuth(`/api/admin/websites/${id}`, {
             method: 'DELETE',
         }, true),
+
+    // NEW: Force ping a website
+    forcePing: (id) =>
+        fetchWithAuth(`/api/admin/websites/${id}/force-ping`, {
+            method: 'POST',
+        }, true),
+
+    // NEW: Create website for any user (admin only)
+    createWebsiteForUser: (websiteData) =>
+        fetchWithAuth('/api/admin/websites', {
+            method: 'POST',
+            body: JSON.stringify(websiteData),
+        }, true),
+
+    // NEW: Bulk website actions (activate, deactivate, delete)
+    bulkWebsiteAction: (action, websiteIds) =>
+        fetchWithAuth('/api/admin/websites/bulk-action', {
+            method: 'POST',
+            body: JSON.stringify({ action, websiteIds }),
+        }, true),
+
+    // NEW: Get audit logs with filtering and pagination
+    getAuditLogs: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return fetchWithAuth(`/api/admin/audit-logs${query ? `?${query}` : ''}`, {}, true);
+    },
+
+    // NEW: Get comprehensive stats
+    getComprehensiveStats: () =>
+        fetchWithAuth('/api/admin/stats/comprehensive', {}, true),
 };
 
 // Profile API (user profile management)
