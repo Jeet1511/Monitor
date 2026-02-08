@@ -1,6 +1,6 @@
 // In production, set VITE_API_URL environment variable to your backend URL
 const API_URL = import.meta.env.PROD
-    ? (import.meta.env.VITE_API_URL || 'https://your-backend.onrender.com')
+    ? (import.meta.env.VITE_API_URL || 'https://sitemonitor-9iaz.onrender.com')
     : '';
 
 // Helper to get auth token (separate storage for user and admin)
