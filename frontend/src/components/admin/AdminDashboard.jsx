@@ -57,7 +57,7 @@ const AdminDashboard = () => {
     const fetchAllData = async () => {
         try {
             setRefreshing(true);
-            const promises = [fetchWithAuth(`${API_BASE}/stats`)];
+            const promises = [fetchWithAuth(`${API_BASE}/stats/comprehensive`)];
 
             if (hasPermission('users.view')) {
                 promises.push(fetchWithAuth(`${API_BASE}/users`));

@@ -6,6 +6,7 @@ const Admin = require('../models/Admin');
 const User = require('../models/User');
 const Website = require('../models/Website');
 const PingLog = require('../models/PingLog');
+const AuditLog = require('../models/AuditLog');
 
 // Admin auth middleware
 const adminAuth = async (req, res, next) => {
@@ -660,6 +661,197 @@ router.get('/export/websites', adminAuth, async (req, res) => {
             success: false,
             message: 'Server error'
         });
+    }
+});
+
+// @route   GET /api/admin/stats
+// @desc    Quick stats endpoint (alias for comprehensive)
+// @access  Admin
+router.get('/stats', adminAuth, async (req, res) => {
+    try {
+        // Redirect to comprehensive stats
+        const now = new Date();
+        const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const [totalUsers, activeUsers, recentUsers, totalWebsites, upWebsites, downWebsites, activeWebsites, recentPings] = await Promise.all([
+            User.countDocuments(),
+            User.countDocuments({ lastLogin: { $gte: sevenDaysAgo } }),
+            User.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+            Website.countDocuments(),
+            Website.countDocuments({ lastStatus: 'up' }),
+            Website.countDocuments({ lastStatus: 'down' }),
+            Website.countDocuments({ isActive: true }),
+            PingLog.countDocuments({ timestamp: { $gte: today } })
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                stats: {
+                    totalUsers,
+                    activeUsers,
+                    recentUsers,
+                    totalWebsites,
+                    upWebsites,
+                    downWebsites,
+                    activeWebsites,
+                    recentPings
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Stats error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @route   GET /api/admin/audit-logs
+// @desc    Get audit logs with filtering and pagination
+// @access  Admin
+router.get('/audit-logs', adminAuth, async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 20,
+            action,
+            actorId,
+            resourceType,
+            startDate,
+            endDate,
+            status
+        } = req.query;
+
+        // Build query
+        const query = {};
+        if (action) query.action = action;
+        if (actorId) query.actorId = actorId;
+        if (resourceType) query.resourceType = resourceType;
+        if (status) query.status = status;
+
+        if (startDate || endDate) {
+            query.timestamp = {};
+            if (startDate) query.timestamp.$gte = new Date(startDate);
+            if (endDate) query.timestamp.$lte = new Date(endDate);
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const [logs, total] = await Promise.all([
+            AuditLog.find(query)
+                .sort({ timestamp: -1 })
+                .limit(parseInt(limit))
+                .skip(skip)
+                .lean(),
+            AuditLog.countDocuments(query)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                logs,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    pages: Math.ceil(total / parseInt(limit))
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Audit logs error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/websites
+// @desc    Create website for any user (admin only)
+// @access  Admin
+router.post('/websites', adminAuth, async (req, res) => {
+    try {
+        const { userId, name, url, pingInterval, expectedStatusCode } = req.body;
+
+        if (!userId || !name || !url) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID, name, and URL are required'
+            });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const website = await Website.create({
+            userId,
+            name,
+            url,
+            pingInterval: pingInterval || 5,
+            expectedStatusCode: expectedStatusCode || 200,
+            isActive: true
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Website created successfully',
+            data: { website }
+        });
+    } catch (error) {
+        console.error('Create website error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @route   POST /api/admin/websites/bulk-action
+// @desc    Bulk operations on websites
+// @access  Admin
+router.post('/websites/bulk-action', adminAuth, async (req, res) => {
+    try {
+        const { action, websiteIds } = req.body;
+
+        if (!action || !websiteIds || !Array.isArray(websiteIds)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Action and website IDs array are required'
+            });
+        }
+
+        let result;
+        switch (action) {
+            case 'activate':
+                result = await Website.updateMany(
+                    { _id: { $in: websiteIds } },
+                    { $set: { isActive: true } }
+                );
+                break;
+            case 'deactivate':
+                result = await Website.updateMany(
+                    { _id: { $in: websiteIds } },
+                    { $set: { isActive: false } }
+                );
+                break;
+            case 'delete':
+                result = await Website.deleteMany({ _id: { $in: websiteIds } });
+                break;
+            default:
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid action'
+                });
+        }
+
+        res.json({
+            success: true,
+            message: `Bulk ${action} completed`,
+            data: { modified: result.modifiedCount || result.deletedCount || 0 }
+        });
+    } catch (error) {
+        console.error('Bulk action error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
