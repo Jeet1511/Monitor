@@ -18,7 +18,7 @@ import AnalyticsPage from './components/dashboard/AnalyticsPage';
 
 // Admin - Core
 import AdminLogin from './components/admin/AdminLogin';
-import AdminDashboard from './components/admin/AdminDashboard';
+import AdvancedAdminDashboard from './components/admin/AdvancedAdminDashboard';
 import AdminUsers from './components/admin/AdminUsers';
 import AdminUserDetails from './components/admin/AdminUserDetails';
 import AdminWebsites from './components/admin/AdminWebsites';
@@ -145,7 +145,7 @@ function App() {
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={
                 <AdminRoute>
-                    <AdminDashboard />
+                    <AdvancedAdminDashboard />
                 </AdminRoute>
             } />
             <Route path="/admin/users" element={
@@ -207,7 +207,7 @@ function App() {
             } />
             <Route path="/admin/admins" element={
                 <AdminRoute>
-                    <AdminDashboard />
+                    <AdvancedAdminDashboard />
                 </AdminRoute>
             } />
             <Route path="/admin/errors" element={
