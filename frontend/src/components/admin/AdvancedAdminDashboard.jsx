@@ -74,34 +74,55 @@ const AdvancedAdminDashboard = () => {
         );
     }
 
-    // Chart data transformations
-    const userGrowthData = stats.userGrowth?.daily?.slice(-7).map((item, idx) => ({
-        day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx % 7],
-        users: item.count || 0
-    })) || [];
+    // Chart data transformations with safe defaults
+    const userGrowthData = Array.isArray(stats.userGrowth?.daily)
+        ? stats.userGrowth.daily.slice(-7).map((item, idx) => ({
+            day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx % 7],
+            users: item?.count || 0
+        }))
+        : [
+            { day: 'Mon', users: 0 },
+            { day: 'Tue', users: 0 },
+            { day: 'Wed', users: 0 },
+            { day: 'Thu', users: 0 },
+            { day: 'Fri', users: 0 },
+            { day: 'Sat', users: 0 },
+            { day: 'Sun', users: 0 }
+        ];
 
     const websiteStatusData = [
-        { name: 'Up', value: stats.websites?.up || 0, color: '##10b981' },
+        { name: 'Up', value: stats.websites?.up || 0, color: '#10b981' },
         { name: 'Down', value: stats.websites?.down || 0, color: '#ef4444' },
         { name: 'Pending', value: stats.websites?.pending || 0, color: '#f59e0b' }
     ];
 
-    const pingPerformanceData = stats.pingPerformance?.hourly?.slice(-12).map((item, idx) => ({
-        hour: `${idx}h`,
-        successful: item.successful || 0,
-        failed: item.failed || 0
-    })) || [];
+    const pingPerformanceData = Array.isArray(stats.pingPerformance?.hourly)
+        ? stats.pingPerformance.hourly.slice(-12).map((item, idx) => ({
+            hour: `${idx}h`,
+            successful: item?.successful || 0,
+            failed: item?.failed || 0
+        }))
+        : Array.from({ length: 12 }, (_, i) => ({
+            hour: `${i}h`,
+            successful: 0,
+            failed: 0
+        }));
 
-    const responseTimeData = stats.performance?.responseTime?.history?.slice(-10).map((item, idx) => ({
-        timestamp: `T${idx}`,
-        avgTime: item.avg || 0
-    })) || [];
+    const responseTimeData = Array.isArray(stats.performance?.responseTime?.history)
+        ? stats.performance.responseTime.history.slice(-10).map((item, idx) => ({
+            timestamp: `T${idx}`,
+            avgTime: item?.avg || 0
+        }))
+        : Array.from({ length: 10 }, (_, i) => ({
+            timestamp: `T${i}`,
+            avgTime: 0
+        }));
 
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-    // Calculate trends
+    // Calculate trends with safe defaults
     const getTrend = (current, previous) => {
-        if (!previous || previous === 0) return { value: 0, direction: 'neutral' };
+        if (!current || !previous || previous === 0) return { value: 0, direction: 'neutral' };
         const change = ((current - previous) / previous) * 100;
         return {
             value: Math.abs(change).toFixed(1),
@@ -109,9 +130,9 @@ const AdvancedAdminDashboard = () => {
         };
     };
 
-    const userTrend = getTrend(stats.users?.total, stats.users?.totalLastWeek);
-    const websiteTrend = getTrend(stats.websites?.total, stats.websites?.totalLastWeek);
-    const uptimeTrend = getTrend(stats.websites?.avgUptime, stats.websites?.avgUptimeLastWeek);
+    const userTrend = getTrend(stats.users?.total || 0, stats.users?.totalLastWeek || 0);
+    const websiteTrend = getTrend(stats.websites?.total || 0, stats.websites?.totalLastWeek || 0);
+    const uptimeTrend = getTrend(stats.websites?.avgUptime || 100, stats.websites?.avgUptimeLastWeek || 100);
 
     return (
         <AdminLayout>
@@ -316,7 +337,7 @@ const AdvancedAdminDashboard = () => {
                         <div className="health-info">
                             <h4>Server Status</h4>
                             <p className="health-value">Healthy</p>
-                            <p className="health-detail">Uptime: {formatUptime(stats.system?.uptime)}</p>
+                            <p className="health-detail">Uptime: {formatUptime(stats.system?.uptime || 0)}</p>
                         </div>
                     </div>
 
@@ -326,9 +347,9 @@ const AdvancedAdminDashboard = () => {
                         </div>
                         <div className="health-info">
                             <h4>Memory Usage</h4>
-                            <p className="health-value">{stats.system?.memory?.usedPercent || 0}%</p>
+                            <p className="health-value">{Math.round(stats.system?.memory?.usedPercent || 0)}%</p>
                             <p className="health-detail">
-                                {formatBytes(stats.system?.memory?.used)} / {formatBytes(stats.system?.memory?.total)}
+                                {formatBytes(stats.system?.memory?.used || 0)} / {formatBytes(stats.system?.memory?.total || 0)}
                             </p>
                         </div>
                     </div>
@@ -339,13 +360,13 @@ const AdvancedAdminDashboard = () => {
                         </div>
                         <div className="health-info">
                             <h4>CPU Load</h4>
-                            <p className="health-value">{stats.system?.cpu?.usage || 0}%</p>
+                            <p className="health-value">{Math.round(stats.system?.cpu?.usage || 0)}%</p>
                             <p className="health-detail">{stats.system?.cpu?.cores || 0} cores</p>
                         </div>
                     </div>
 
                     <div className="health-card">
-                        <div className="health-icon warning">
+                        <div className={`health-icon ${(stats.issues?.websitesDown || 0) > 0 ? 'warning' : 'success'}`}>
                             <AlertTriangle size={24} />
                         </div>
                         <div className="health-info">
@@ -366,34 +387,47 @@ const AdvancedAdminDashboard = () => {
                         </button>
                     </div>
                     <div className="activity-list">
-                        {stats.recent?.users?.slice(0, 5).map((user, idx) => (
-                            <div key={idx} className="activity-item">
-                                <div className="activity-icon success">
-                                    <Users size={16} />
+                        {Array.isArray(stats.recent?.users) && stats.recent.users.length > 0 ? (
+                            stats.recent.users.slice(0, 5).map((user, idx) => (
+                                <div key={idx} className="activity-item">
+                                    <div className="activity-icon success">
+                                        <Users size={16} />
+                                    </div>
+                                    <div className="activity-content">
+                                        <p className="activity-title">New user registered</p>
+                                        <p className="activity-detail">{user.name} ({user.email})</p>
+                                    </div>
+                                    <div className="activity-time">
+                                        {formatTimeAgo(user.createdAt)}
+                                    </div>
                                 </div>
+                            ))
+                        ) : null}
+                        {Array.isArray(stats.recent?.websites) && stats.recent.websites.length > 0 ? (
+                            stats.recent.websites.slice(0, 5).map((website, idx) => (
+                                <div key={idx} className="activity-item">
+                                    <div className="activity-icon info">
+                                        <Globe size={16} />
+                                    </div>
+                                    <div className="activity-content">
+                                        <p className="activity-title">New website added</p>
+                                        <p className="activity-detail">{website.name}</p>
+                                    </div>
+                                    <div className="activity-time">
+                                        {formatTimeAgo(website.createdAt)}
+                                    </div>
+                                </div>
+                            ))
+                        ) : null}
+                        {(!stats.recent?.users?.length && !stats.recent?.websites?.length) && (
+                            <div className="activity-item">
                                 <div className="activity-content">
-                                    <p className="activity-title">New user registered</p>
-                                    <p className="activity-detail">{user.name} ({user.email})</p>
-                                </div>
-                                <div className="activity-time">
-                                    {formatTimeAgo(user.createdAt)}
+                                    <p className="activity-detail" style={{ color: 'var(--text-muted)' }}>
+                                        No recent activity
+                                    </p>
                                 </div>
                             </div>
-                        ))}
-                        {stats.recent?.websites?.slice(0, 5).map((website, idx) => (
-                            <div key={idx} className="activity-item">
-                                <div className="activity-icon info">
-                                    <Globe size={16} />
-                                </div>
-                                <div className="activity-content">
-                                    <p className="activity-title">New website added</p>
-                                    <p className="activity-detail">{website.name}</p>
-                                </div>
-                                <div className="activity-time">
-                                    {formatTimeAgo(website.createdAt)}
-                                </div>
-                            </div>
-                        ))}
+                        )}
                     </div>
                 </div>
             </div>
