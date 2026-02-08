@@ -42,11 +42,13 @@ const AdvancedAdminDashboard = () => {
 
             console.log('Stats Response:', response);
 
-            if (!response || !response.data || !response.data.stats) {
+            // Backend returns {success: true, data: {users: {...}, websites: {...}, ...}}
+            // Stats are DIRECTLY in response.data, not in response.data.stats
+            if (!response || !response.data) {
                 throw new Error('Invalid response structure from API');
             }
 
-            setStats(response.data.stats);
+            setStats(response.data);
             setLastUpdate(new Date());
         } catch (error) {
             console.error('Failed to fetch stats:', error);
