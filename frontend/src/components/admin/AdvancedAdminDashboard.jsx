@@ -39,10 +39,27 @@ const AdvancedAdminDashboard = () => {
         try {
             setRefreshing(true);
             const response = await adminAPI.getComprehensiveStats();
+
+            console.log('Stats Response:', response);
+
+            if (!response || !response.data || !response.data.stats) {
+                throw new Error('Invalid response structure from API');
+            }
+
             setStats(response.data.stats);
             setLastUpdate(new Date());
         } catch (error) {
             console.error('Failed to fetch stats:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response,
+                status: error.response?.status
+            });
+
+            // Show more specific error to user
+            if (error.message?.includes('<!DOCTYPE')) {
+                console.error('Received HTML instead of JSON - API endpoint may not exist or auth failed');
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
