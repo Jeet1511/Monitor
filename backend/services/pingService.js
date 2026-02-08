@@ -25,12 +25,15 @@ class PingService {
             const isUp = response.status >= 200 && response.status < 400;
 
             // Update website
-            website.lastPinged = new Date();
+            website.lastChecked = new Date(); // Fixed from lastPinged
             website.lastStatus = isUp ? 'up' : 'down';
             website.lastResponseTime = responseTime;
-            website.totalPings += 1;
-            if (isUp) website.successfulPings += 1;
-            website.uptime = website.calculateUptime();
+            website.stats.totalChecks = (website.stats.totalChecks || 0) + 1; // Fixed from totalPings
+            website.lastStatusCode = response.status;
+
+            // Note: complex uptime calculation removed as calculateUptime() is not defined
+            // We can rely on a separate aggregation job for statistics
+
             await website.save();
 
             // Create log
@@ -46,11 +49,13 @@ class PingService {
         } catch (error) {
             const responseTime = Date.now() - startTime;
 
-            website.lastPinged = new Date();
+            website.lastChecked = new Date(); // Fixed from lastPinged
             website.lastStatus = 'down';
             website.lastResponseTime = responseTime;
-            website.totalPings += 1;
-            website.uptime = website.calculateUptime();
+            website.stats.totalChecks = (website.stats.totalChecks || 0) + 1; // Fixed from totalPings
+
+            // Note: complex uptime calculation removed as calculateUptime() is not defined
+
             await website.save();
 
             await PingLog.create({

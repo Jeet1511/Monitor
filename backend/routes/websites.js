@@ -19,12 +19,12 @@ const pingWebsiteNow = async (website) => {
         const responseTime = Date.now() - startTime;
         const isUp = response.status >= 200 && response.status < 400;
 
-        website.lastPinged = new Date();
+        website.lastChecked = new Date();
         website.lastStatus = isUp ? 'up' : 'down';
         website.lastResponseTime = responseTime;
-        website.totalPings += 1;
-        if (isUp) website.successfulPings += 1;
-        website.uptime = website.calculateUptime();
+        website.stats.totalChecks = (website.stats.totalChecks || 0) + 1;
+        website.lastStatusCode = response.status;
+        // website.uptime calculation removed
         await website.save();
 
         await PingLog.create({
@@ -39,11 +39,11 @@ const pingWebsiteNow = async (website) => {
     } catch (error) {
         const responseTime = Date.now() - startTime;
 
-        website.lastPinged = new Date();
+        website.lastChecked = new Date();
         website.lastStatus = 'down';
         website.lastResponseTime = responseTime;
-        website.totalPings += 1;
-        website.uptime = website.calculateUptime();
+        website.stats.totalChecks = (website.stats.totalChecks || 0) + 1;
+        // website.uptime calculation removed
         await website.save();
 
         await PingLog.create({
@@ -288,12 +288,12 @@ router.post('/:id/ping', auth, async (req, res) => {
             const isUp = response.status >= 200 && response.status < 400;
 
             // Update website
-            website.lastPinged = new Date();
+            website.lastChecked = new Date();
             website.lastStatus = isUp ? 'up' : 'down';
             website.lastResponseTime = responseTime;
-            website.totalPings += 1;
-            if (isUp) website.successfulPings += 1;
-            website.uptime = website.calculateUptime();
+            website.stats.totalChecks = (website.stats.totalChecks || 0) + 1;
+            website.lastStatusCode = response.status;
+            // website.uptime calculation removed
             await website.save();
 
             // Create log
@@ -312,11 +312,11 @@ router.post('/:id/ping', auth, async (req, res) => {
         } catch (pingError) {
             const responseTime = Date.now() - startTime;
 
-            website.lastPinged = new Date();
+            website.lastChecked = new Date();
             website.lastStatus = 'down';
             website.lastResponseTime = responseTime;
-            website.totalPings += 1;
-            website.uptime = website.calculateUptime();
+            website.stats.totalChecks = (website.stats.totalChecks || 0) + 1;
+            // website.uptime calculation removed
             await website.save();
 
             const log = await PingLog.create({
